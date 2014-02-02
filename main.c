@@ -103,22 +103,25 @@ void imprimirRespuesta(char paquete,int secuencia);
 	for (n = 0; n < N/4; n++)
 	{
 		
-		int parametros=1; 		
- 		pthread_create(&planA_threads[n],&attr,leerPaquete,(void *)&parametros);
- 		//pthread_create(&planA_threads[n],&attr,leerPaquete,NULL);
+		int *arg = malloc(sizeof(int));       
+        *arg = 1;		
+ 		pthread_create(&planA_threads[n],&attr,leerPaquete,(void *)arg);
+ 		
 	}
-	/*for (n = 0; n < N/2; n++)
+	for (n = 0; n < N/2; n++)
 	{
 		
-		char parametros[]={'B'}; 	
- 		pthread_create(planB_threads[n],&attr,leerPaquete,(void *)parametros);
+		int *arg = malloc(sizeof(int));       
+        *arg = 2;		
+ 		pthread_create(&planB_threads[n],&attr,leerPaquete,(void *)arg);
 	}
 	for (n = 0; n < N; n++)
 	{
 		
-		char parametros[]={'C'}; 	
- 		pthread_create(planC_threads[n],&attr,leerPaquete,(void *)parametros);
-	}*/
+		int *arg = malloc(sizeof(int));       
+        *arg = 3;		
+ 		pthread_create(&planC_threads[n],&attr,leerPaquete,(void *)arg);
+	}
 	printf("\nHilos Iniciados");	
  }
 
@@ -137,18 +140,16 @@ void imprimirRespuesta(char paquete,int secuencia);
 		if (bind(s, &si_me, sizeof(si_me))==-1)
 		      perror("bind");
 
-	//while(1){
-	for (i=0; i<NPACK; i++) {
+	while(1){
+	//for (i=0; i<NPACK; i++) {
 		if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen)==-1)
 			perror("recvfrom err");
 	    //printf("Received packet from %s:%d\nData: %s\n\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
 	    char* seq_paq=buf;
 	    seq_paq++;
 	    int secuencia=atoi(seq_paq);
-	    char paquete=buf[0];
-	    printf("\nAgregando paquete");
-	    agregarPaquete(paquete, secuencia);	  
-	        printf("\n2. Agregado ");
+	    char paquete=buf[0];	    
+	    agregarPaquete(paquete, secuencia);	  	      
 	}
 	
 	close(s);
@@ -178,19 +179,18 @@ void agregarPaquete( char paquete,int secuencia){
 
 void *leerPaquete(void* param ){
 	// printf("\nIniciando Plan C");
-	
-	int * parametros=param;
-	int plan=(int)*parametros;
+	int plan = *((int *) param);
 	//char plan='D';
 	switch(plan){
 	    	
 	    	case 3:
-	    		
-	    		while(1){	    			
+	    		printf("\nIniciando Plan C");	
+	    		while(1){
+	    			        			
 	    				int flag=0, secuencia;
 	    				char paquete;
 	    				pthread_mutex_lock(&planC_mutex);	    					    			
-	    				if(vector_size(&bufferPlanA)>0){
+	    				if(vector_size(&bufferPlanC)>0){
 	    					paquete=vector_get_PAQUETE(&bufferPlanC,0);
 	    					secuencia=vector_get(&bufferPlanC,0);	    					
 	    					desencolar(&bufferPlanC);	
@@ -203,12 +203,12 @@ void *leerPaquete(void* param ){
 	    	break;
 
 	    	case 2:
-	    	printf("\nIniciando Plan B");	
+	    		printf("\nIniciando Plan B");	
 	    		while(1){	    			
 	    				int flag=0, secuencia;
 	    				char paquete;
 	    				pthread_mutex_lock(&planB_mutex);	    					    			
-	    				if(vector_size(&bufferPlanB)>0&&vector_size(&bufferPlanC)>0){
+	    				if(vector_size(&bufferPlanB)>0&&vector_size(&bufferPlanC)<=0){
 	    					paquete=vector_get_PAQUETE(&bufferPlanB,0);
 	    					secuencia=vector_get(&bufferPlanB,0);	    					
 	    					desencolar(&bufferPlanB);	
@@ -226,7 +226,7 @@ void *leerPaquete(void* param ){
 	    				int flag=0, secuencia;
 	    				char paquete;
 	    				pthread_mutex_lock(&planA_mutex);	    					    			
-	    				if(vector_size(&bufferPlanA)>0&&vector_size(&bufferPlanB)>0&&vector_size(&bufferPlanC)>0){
+	    				if(vector_size(&bufferPlanA)>0&&vector_size(&bufferPlanB)<=0&&vector_size(&bufferPlanC)<=0){
 	    					paquete=vector_get_PAQUETE(&bufferPlanA,0);
 	    					secuencia=vector_get(&bufferPlanA,0);	    					
 	    					desencolar(&bufferPlanA);	
@@ -247,6 +247,6 @@ printf("\nIniciando Planaaaaaaaaa" );
 void imprimirRespuesta(char paquete,int secuencia){	
 	pthread_mutex_lock(&respuesta_mutex);	
 	printf("Respuesta Plan: %c Secuencia:%d\n", paquete,secuencia);
-	pthread_mutex_unlock(&planC_mutex);
+	pthread_mutex_unlock(&respuesta_mutex);
 
 }
