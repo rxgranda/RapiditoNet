@@ -11,6 +11,7 @@
 #define NPACK 100
 #define PORT 5555
 #define MAX_THREAD_COUNT 1000
+#define MAX_THREAD_COUNT2 100000
 
 
 
@@ -26,6 +27,7 @@ pthread_mutex_t respuesta_mutex;
 pthread_t * planA_threads[MAX_THREAD_COUNT];
 pthread_t * planB_threads[MAX_THREAD_COUNT];
 pthread_t * planC_threads[MAX_THREAD_COUNT];
+pthread_t * socketIn_threads[MAX_THREAD_COUNT2];
 
 
 
@@ -33,7 +35,7 @@ pthread_t * planC_threads[MAX_THREAD_COUNT];
 
 void iniciarThreads();
 void iniciarListener();
-void agregarPaquete( char paquete,int secuencia);
+void *agregarPaquete( void* param);
 void *leerPaquete(void* param );
 void imprimirRespuesta(char paquete,int secuencia);
  /*
@@ -126,10 +128,12 @@ void imprimirRespuesta(char paquete,int secuencia);
  }
 
  void iniciarListener(){
-	printf("\nIniciando Listener");	
+	printf("\nIniciando Listener\n");	
  	struct sockaddr_in si_me, si_other;
-	int s, i, slen=sizeof(si_other);
+	int s, i, slen=sizeof(si_other),n=0;
 	char buf[BUFLEN];
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);	
 
 	if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
 		perror("sock err");
@@ -141,34 +145,48 @@ void imprimirRespuesta(char paquete,int secuencia);
 		      perror("bind");
 
 	while(1){
-	//for (i=0; i<NPACK; i++) {
+	
 		if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen)==-1)
 			perror("recvfrom err");
 	    //printf("Received packet from %s:%d\nData: %s\n\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
 	    char* seq_paq=buf;
 	    seq_paq++;
-	    int secuencia=atoi(seq_paq);
+	    //int secuencia=atoi(seq_paq);
 	    char paquete=buf[0];	    
-	    agregarPaquete(paquete, secuencia);	  	      
+	    //agregarPaquete(paquete, secuencia);
+	    int *arg = malloc(sizeof(int)*2); 
+	    if(paquete=='A')      
+        	arg[0] = 1;
+        else if(paquete=='B')      
+        	arg[0] = 2;
+        else if(paquete=='C')      
+        	arg[0] = 3;
+        arg[1]=atoi(seq_paq);
+	    pthread_create(&socketIn_threads[n],&attr,agregarPaquete,(void *)arg);	
+	    n=(n+1)%MAX_THREAD_COUNT2;  	      
 	}
 	
 	close(s);
 
  }
-void agregarPaquete( char paquete,int secuencia){
-							 
+void *agregarPaquete( void* param){
+	  int secuencia,paquete;
+	 
+	 paquete = *((int *) param);
+	 secuencia=((int *) param)[1];	
+	//  printf("\n Paquete%d  Sec%d\n",paquete,secuencia );					
 	switch(paquete){
-	    	case 'A':
+	    	case 1:
 	    		pthread_mutex_lock(&planA_mutex);	
 	    		vector_append(&bufferPlanA,secuencia,'A');
 	    		pthread_mutex_unlock(&planA_mutex);
 	    	break;
-	    	case 'B':
+	    	case 2:
 	    		pthread_mutex_lock(&planB_mutex);	
 	    		vector_append(&bufferPlanB,secuencia,'B');
 	    		pthread_mutex_unlock(&planB_mutex);
 	    	break;
-	    	case 'C':
+	    	case 3:
 	    		pthread_mutex_lock(&planC_mutex);	
 	    		vector_append(&bufferPlanC,secuencia,'C');
 	    		pthread_mutex_unlock(&planC_mutex);
