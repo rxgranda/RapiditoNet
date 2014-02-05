@@ -10,42 +10,49 @@
 #define BUFLEN 512
 #define NPACK 100
 #define PORT 5555
-#define MAX_THREAD_COUNT 1000
+#define MAX_THREAD_COUNT 1000  
 #define MAX_THREAD_COUNT2 100000
 
 
 
-// Número de Hilos
+// Número de Hilos predeterminados
 int N=4;
+
+// Buffer utilizados para el almacenamiento de las tramas de cada uno de los planes
 Vector bufferPlanA;
 Vector bufferPlanB;
 Vector bufferPlanC;
+
+// Semáforos utilizados para los planes
 pthread_mutex_t planA_mutex;
 pthread_mutex_t planB_mutex;
 pthread_mutex_t planC_mutex;
-pthread_mutex_t respuesta_mutex;  
+
+//Arreglo que almacenan los hilos utilizados en los despachadores de tramas
 pthread_t * planA_threads[MAX_THREAD_COUNT];
 pthread_t * planB_threads[MAX_THREAD_COUNT];
 pthread_t * planC_threads[MAX_THREAD_COUNT];
 pthread_t * socketIn_threads[MAX_THREAD_COUNT2];
+
+// Semáforos de condicióm para los planes
 pthread_cond_t count_threshold_planC;
 pthread_cond_t count_threshold_planB;
 pthread_cond_t count_threshold_planA;
+
+//Arreglo parar identificar el estado de los buffer de los planes 0 En espera 1 Llenando
 int planStatus[3]={0,0,0};
 
 
 
-
-
+// Cabeceras de procedimientos
 void iniciarThreads();
 void iniciarListener();
-//void agregarPaquete( char paquete,int secuencia);
-
 void *agregarPaquete( void* param);
 void *leerPaquete(void* param );
 void imprimirRespuesta(char paquete,int secuencia);
+
  /*
- *Descripcion: Punto de inicio de la Instancia del servidor Nubesoft
+ *Descripcion: Punto de inicio del programa Rapiditonet
  */
  void  main(int argc, char  *argv[])
  { 	
@@ -66,23 +73,11 @@ void imprimirRespuesta(char paquete,int secuencia);
  	vector_init(&bufferPlanB);
  	vector_init(&bufferPlanC); 	
  	iniciarThreads();  	
-	iniciarListener();
-
-  	int k;
-	for (k=0; k<vector_size(&bufferPlanA);k++){
- 		printf("%c :%d\n",vector_get_PAQUETE(&bufferPlanA,k),vector_get(&bufferPlanA,k));
- 	}
- 	
-	for (k=0; k<vector_size(&bufferPlanB);k++){
- 		printf("%c :%d\n",vector_get_PAQUETE(&bufferPlanB,k),vector_get(&bufferPlanB,k));
- 	}
- 	
-	for (k=0; k<vector_size(&bufferPlanC);k++){
- 		printf("%c :%d\n",vector_get_PAQUETE(&bufferPlanC,k),vector_get(&bufferPlanC,k));
- 	}
-
+	iniciarListener();  
  }
-
+/*
+ *Descripcion: Procedimiento que inicia los hilos que despachan leen de los buffer de los planes
+ */
  void iniciarThreads(){ 	
 	int n;
 	pthread_attr_t attr;
@@ -91,7 +86,7 @@ void imprimirRespuesta(char paquete,int secuencia);
  	pthread_mutex_init(&planA_mutex, NULL);
  	pthread_mutex_init(&planB_mutex, NULL);
  	pthread_mutex_init(&planC_mutex, NULL);
- 	pthread_mutex_init(&respuesta_mutex, NULL);
+
  	pthread_cond_init (&count_threshold_planC, NULL);
  	pthread_cond_init (&count_threshold_planB, NULL);
  	pthread_cond_init (&count_threshold_planA, NULL);
@@ -114,9 +109,10 @@ void imprimirRespuesta(char paquete,int secuencia);
         *arg = 3;		
  		pthread_create(&planC_threads[n],&attr,leerPaquete,(void *)arg);
 	}
-	printf("\nHilos Iniciados");	
  }
-
+/*
+ *Descripcion: Procedimiento que abre la conexión de socket de Rapiditonet
+ */
  void iniciarListener(){
 	printf("\nIniciando Listener\n");	
  	struct sockaddr_in si_me, si_other;
@@ -154,6 +150,9 @@ void imprimirRespuesta(char paquete,int secuencia);
 	}	
 	close(s);
  }
+ /*
+ *Descripcion: Procedimiento que guarda nuevas tramas en los buffer de acuerdo a los planes
+ */
 void *agregarPaquete( void* param){
 	 int secuencia,paquete;	 
 	 paquete = *((int *) param);
@@ -180,36 +179,17 @@ void *agregarPaquete( void* param){
 	    		planStatus[2]=1;
 	    		pthread_cond_signal(&count_threshold_planC);
 	    		pthread_mutex_unlock(&planC_mutex);
-	    	break;
-	    	case 'A':
-	    		pthread_mutex_lock(&planA_mutex);	
-	    		vector_append(&bufferPlanA,secuencia,'A');
-	    		planStatus[0]=1;
-	    		pthread_cond_signal(&count_threshold_planA);
-	    		pthread_mutex_unlock(&planA_mutex);
-	    	break;
-	    	case 'B':
-	    		pthread_mutex_lock(&planB_mutex);	
-	    		vector_append(&bufferPlanB,secuencia,'B');
-	    		planStatus[1]=1;
-	    		pthread_cond_signal(&count_threshold_planB);
-	    		pthread_mutex_unlock(&planB_mutex);
-	    	break;
-	    	case 'C':
-	    		pthread_mutex_lock(&planC_mutex);	
-	    		vector_append(&bufferPlanC,secuencia,'C');
-	    		planStatus[2]=1;
-	    		pthread_cond_signal(&count_threshold_planC);
-	    		pthread_mutex_unlock(&planC_mutex);
-	    	break;
+	    	break;	    	
 	    }
 
 }
 
-void *leerPaquete(void* param ){
-	// printf("\nIniciando Plan C");
+/*
+ *Descripcion: Procedimiento que lee las tramas que han sido almacenada en los buffer de los planes
+ */
+
+void *leerPaquete(void* param ){	
 	int plan = *((int *) param);
-	//char plan='D';
 	switch(plan){
 	    	
 	    	case 3:
@@ -247,7 +227,8 @@ void *leerPaquete(void* param ){
 		    					secuencia=vector_get(&bufferPlanB,0);	    					
 		    					desencolar(&bufferPlanB);		    				 
 	    						imprimirRespuesta(paquete,secuencia);		    						     				
-	    				}	    				
+	    				}	    
+	    				usleep(1000);				
 	    				pthread_mutex_unlock(&planB_mutex);	    				 		
 				}	 
 	    	break;
@@ -265,13 +246,16 @@ void *leerPaquete(void* param ){
 	    					secuencia=vector_get(&bufferPlanA,0);	    					
 	    					desencolar(&bufferPlanA);
 	    					imprimirRespuesta(paquete,secuencia);			    				  				
-	    				}	    				
+	    				}
+	    				usleep(1000);	    				
 	    				pthread_mutex_unlock(&planA_mutex);	    					    		
 				}	    			    		
 	    	break;
 	    }		
 }
-
+/*
+ *Descripcion: Procedimiento que imprime la respuesta que se le da a la trama
+ */
 void imprimirRespuesta(char paquete,int secuencia){	
-	printf("Respuesta Plan: %c Secuencia:%d\n", paquete,secuencia);
+	printf("Respuesta Plan: %c:%d\n", paquete,secuencia);
 }
