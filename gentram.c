@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define BUFLEN 512
-#define SECLEN 6
+#define SECLEN 18
 #define SECNUM 3
 #define PORT 5555
 
@@ -19,9 +19,9 @@
  char buf[BUFLEN];
  char *seq[SECNUM];
  
- seq[0]="AABBCC";
- seq[1]="ABCCCC";
- seq[2]="AABBAC";
+ seq[0]="AABBCCAABBCCAABBCC";
+ seq[1]="ABBCCCCCCCCCCCCCCC";
+ seq[2]="AABBBAAABBCCCCCCCC";
 
 
  if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
