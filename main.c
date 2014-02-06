@@ -161,23 +161,29 @@ void *agregarPaquete( void* param){
 	switch(paquete){
 	    	case 1:
 	    		pthread_mutex_lock(&planA_mutex);	
-	    		vector_append(&bufferPlanA,secuencia,'A');
-	    		planStatus[0]=1;
+	    		vector_append(&bufferPlanA,secuencia,'A');	    		
+	    		
+	    		if(planStatus[0]==0)
 	    		pthread_cond_signal(&count_threshold_planA);
+	    		planStatus[0]=1;
 	    		pthread_mutex_unlock(&planA_mutex);
 	    	break;
 	    	case 2:
 	    		pthread_mutex_lock(&planB_mutex);	
 	    		vector_append(&bufferPlanB,secuencia,'B');
-	    		planStatus[1]=1;
+	    		
+	    		if(planStatus[1]==0)
 	    		pthread_cond_signal(&count_threshold_planB);
+	    		planStatus[1]=1;
 	    		pthread_mutex_unlock(&planB_mutex);
 	    	break;
 	    	case 3:
 	    		pthread_mutex_lock(&planC_mutex);	
 	    		vector_append(&bufferPlanC,secuencia,'C');
-	    		planStatus[2]=1;
+	    		
+	    		if(planStatus[2]==0)
 	    		pthread_cond_signal(&count_threshold_planC);
+	    		planStatus[2]=1;
 	    		pthread_mutex_unlock(&planC_mutex);
 	    	break;	    	
 	    }
@@ -238,9 +244,10 @@ void *leerPaquete(void* param ){
 	    				int flag=0, secuencia;
 	    				char paquete;
 	    				pthread_mutex_lock(&planA_mutex);
-	    				if(vector_size(&bufferPlanA)==0)
+	    				if(vector_size(&bufferPlanA)==0){
+	    					planStatus[0]=0;  
 	    					pthread_cond_wait(&count_threshold_planA, &planA_mutex);
-
+	    				}
 	    				if(vector_size(&bufferPlanA)>0 &&planStatus[1]==0&& planStatus[2]==0 ){	    				
 	    					paquete=vector_get_PAQUETE(&bufferPlanA,0);
 	    					secuencia=vector_get(&bufferPlanA,0);	    					
